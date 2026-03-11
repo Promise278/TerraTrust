@@ -64,7 +64,7 @@ const AuthPage = () => {
           router.push("/pages/userdashboard");
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong.");
     } finally {
       setLoading(false);
