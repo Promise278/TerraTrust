@@ -7,6 +7,7 @@ interface User {
   name: string;
   email: string;
   role: "admin" | "landowner" | "buyer";
+  isVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -31,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
     if (storedToken && storedUser) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }

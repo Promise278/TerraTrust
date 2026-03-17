@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from "@/utils/api";
-import { Search, MapPin, MessageSquare, Tag, Info, Send } from "lucide-react";
+import { Search, MapPin, MessageSquare, Tag, Info, Send, Shield, Activity } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -24,11 +25,23 @@ interface Conversation {
 }
 
 const BuyerDashboard = () => {
+  const router = useRouter();
   const [lands, setLands] = useState<Land[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [messagingLand, setMessagingLand] = useState<Land | null>(null);
   const [messageText, setMessageText] = useState("");
+
+  const isValidUrl = (url: string) => {
+    if (!url) return false;
+    return (
+      url.startsWith("http://") ||
+      url.startsWith("https://") ||
+      url.startsWith("/") ||
+      url.startsWith("data:image/")
+    );
+  };
 
   const fetchData = async () => {
     try {
@@ -50,17 +63,21 @@ const BuyerDashboard = () => {
     e.preventDefault();
     if (!messagingLand || !messageText.trim()) return;
 
+    setIsSubmitting(true);
     try {
       await api.post("/messages/send", {
         receiverId: messagingLand.owner?.id,
+        landId: messagingLand.id,
         text: messageText,
       });
-      toast.success("Message sent successfully!");
-      setMessagingLand(null);
+      toast.success("Inquiry sent successfully!");
+      setMessagingLand(null); // Close the modal by setting messagingLand to null
       setMessageText("");
-      fetchData(); // Refresh conversations
+      fetchData(); // Refresh inquiries count
     } catch {
-      toast.error("Failed to send message");
+      toast.error("Failed to send inquiry");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -130,85 +147,94 @@ const BuyerDashboard = () => {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Lands View */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+          <div className="lg:col-span-2 flex flex-col gap-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-2xl text-[#0f1a16] font-bold">
-                Featured Lands
+                Premium Listings
               </h2>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#61776f]" />
+              <div className="relative group w-full md:w-72">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#61776f] group-focus-within:text-[#18422f] transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search location..."
-                  className="w-full pl-9 pr-4 py-2 bg-white border border-[#e5e9e7] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#18422f]/20"
+                  placeholder="Search by state or city..."
+                  className="w-full pl-11 pr-4 py-3 bg-white border border-[#e5e9e7] rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-[#18422f]/5 focus:border-[#18422f]/20 transition-all shadow-sm"
                 />
               </div>
             </div>
 
             {lands.length === 0 ? (
-              <div className="bg-white border border-dashed border-[#e5e9e7] rounded-3xl py-20 text-center">
-                <div className="w-16 h-16 bg-[#f3f5f4] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-8 h-8 text-[#cbd5e1]" />
+              <div className="bg-white border-2 border-dashed border-[#e5e9e7] rounded-[40px] py-32 text-center">
+                <div className="w-20 h-20 bg-[#f3f5f4] rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <MapPin className="w-10 h-10 text-[#cbd5e1]" />
                 </div>
-                <h3 className="text-lg font-bold text-[#0f1a16]">
-                  No lands available right now
+                <h3 className="text-xl font-bold text-[#0f1a16]">
+                  No titles found match
                 </h3>
-                <p className="text-[#61776f]">
-                  Check back later for new listings.
+                <p className="text-[#61776f] max-w-xs mx-auto text-sm">
+                  The registry is temporarily clear of new listings in this criteria.
                 </p>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-6">
+              <div className="grid sm:grid-cols-2 gap-8">
                 {lands.map((land) => (
                   <div
                     key={land.id}
-                    className="bg-white rounded-3xl border border-[#e5e9e7] overflow-hidden group hover:shadow-xl transition-all h-full flex flex-col"
+                    className="bg-white rounded-[32px] border border-[#e5e9e7] overflow-hidden group hover:shadow-2xl hover:translate-y-[-4px] transition-all duration-500 flex flex-col"
                   >
-                    <div className="aspect-4/3 bg-[#f3f5f4] relative">
-                      {land.imageUrl ? (
+                    <div className="aspect-16/11 bg-[#f3f5f4] relative overflow-hidden">
+                      {land.imageUrl && isValidUrl(land.imageUrl) ? (
                         <Image
                           src={land.imageUrl}
                           alt={land.title}
                           width={400}
                           height={300}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                          unoptimized={land.imageUrl.startsWith("data:")}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <MapPin className="w-12 h-12 text-[#cbd5e1]" />
                         </div>
                       )}
-                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-[#18422f]">
-                        {land.status}
+                      <div className="absolute top-5 left-5">
+                        <span className="bg-white/80 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-[#18422f] border border-white/20 shadow-sm">
+                          {land.status}
+                        </span>
                       </div>
                     </div>
-                    <div className="p-6 flex flex-col flex-1">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-xl font-bold text-[#0f1a16] truncate">
+                    <div className="p-8 flex flex-col flex-1">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-xl font-bold text-[#0f1a16] leading-tight">
                           {land.title}
                         </h3>
-                        <p className="text-xl font-bold text-[#18422f]">
-                          ₦{parseFloat(land.price).toLocaleString()}
-                        </p>
                       </div>
-                      <div className="flex items-center gap-1 text-[#61776f] text-sm mb-4">
-                        <MapPin className="w-4 h-4" />
+                      <div className="flex items-center gap-2 text-[#61776f] text-sm mb-6 font-medium">
+                        <MapPin className="w-4 h-4 text-[#18422f]/40" />
                         <span className="truncate">{land.location}</span>
                       </div>
-                      <p className="text-[#61776f] text-sm line-clamp-2 mb-6 flex-1">
-                        {land.description}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setMessagingLand(land)}
-                          className="flex-1 bg-[#18422f] text-white py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                          Message Owner
-                        </button>
-                        <button className="bg-[#f3f5f4] text-[#0f1a16] px-4 py-3 rounded-xl font-bold text-sm hover:bg-[#e2e8e5] transition-all">
-                          <Info className="w-4 h-4" />
-                        </button>
+                      
+                      <div className="mt-auto">
+                        <div className="flex items-center justify-between mb-6">
+                          <p className="text-2xl font-bold text-[#18422f]">
+                             ₦{parseFloat(land.price).toLocaleString()}
+                          </p>
+                          <div className="bg-[#f3f5f4] p-2 rounded-xl group-hover:bg-[#18422f]/5 transition-colors">
+                            <Tag className="w-4 h-4 text-[#61776f]" />
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setMessagingLand(land)}
+                            className="flex-1 bg-[#18422f] text-white py-4 rounded-[18px] font-bold text-sm shadow-lg shadow-[#18422f]/10 hover:shadow-xl hover:shadow-[#18422f]/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            Direct Inquiry
+                          </button>
+                          <button className="bg-[#f3f5f4] text-[#0f1a16] w-14 rounded-[18px] font-bold text-sm hover:bg-[#e2e8e5] transition-all flex items-center justify-center group/btn">
+                            <Info className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -218,58 +244,63 @@ const BuyerDashboard = () => {
           </div>
 
           {/* Sidebar: Conversations */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-8">
             <h2 className="text-2xl text-[#0f1a16] font-bold">
-              Recent Inquiries
+              Direct Streams
             </h2>
-            <div className="bg-white rounded-3xl border border-[#e5e9e7] overflow-hidden">
+            <div className="bg-white rounded-[32px] border border-[#e5e9e7] overflow-hidden shadow-sm">
+              <div className="p-6 border-b border-[#f3f5f4] bg-[#f8f9f8]/50">
+                <h3 className="text-xs font-bold text-[#0f1a16] uppercase tracking-widest">Active Negotiations</h3>
+              </div>
               {conversations.length === 0 ? (
-                <div className="p-10 text-center">
-                  <p className="text-[#61776f] text-sm italic">
-                    You haven&apos;t messaged any owners yet.
+                <div className="p-16 text-center">
+                  <MessageSquare className="w-10 h-10 text-[#f3f5f4] mx-auto mb-4" />
+                  <p className="text-[#61776f] text-xs font-medium italic">
+                    You haven&apos;t started any land inquiries yet.
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-[#e5e9e7]">
+                <div className="divide-y divide-[#f3f5f4]">
                   {conversations.map((conv) => (
                     <button
                       key={conv.id}
-                      className="w-full text-left p-6 hover:bg-[#f8f9f8] transition-all group"
+                      onClick={() => router.push(`/pages/messages?convId=${conv.id}`)}
+                      className="w-full text-left p-6 hover:bg-[#f8f9f8] transition-all group flex gap-4"
                     >
-                      <div className="flex items-center gap-4 mb-2">
-                        <div className="w-10 h-10 rounded-full bg-[#18422f]/10 flex items-center justify-center font-bold text-[#18422f]">
-                          {conv.landowner.name.charAt(0)}
-                        </div>
-                        <div className="flex-1 min-w-0">
+                      <div className="w-12 h-12 rounded-2xl bg-[#18422f]/5 border border-[#18422f]/10 flex items-center justify-center font-bold text-[#18422f] text-lg shrink-0">
+                        {conv.landowner.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-1">
                           <p className="text-sm font-bold text-[#0f1a16] truncate">
                             {conv.landowner.name}
                           </p>
-                          <p className="text-[10px] text-[#9ca3af] uppercase font-bold tracking-widest">
-                            Landowner
-                          </p>
+                          <span className="text-[9px] text-green-600 font-bold bg-green-50 px-1.5 py-0.5 rounded-md">LIVE</span>
                         </div>
+                        <p className="text-[11px] text-[#61776f] line-clamp-1 italic font-medium leading-relaxed">
+                          &ldquo;{conv.messages[0]?.text || "Sent an inquiry"}&rdquo;
+                        </p>
                       </div>
-                      <p className="text-sm text-[#61776f] line-clamp-1 italic">
-                        {conv.messages[0]?.text || "No messages yet..."}
-                      </p>
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="bg-[#18422f] p-6 rounded-3xl text-white relative overflow-hidden">
+            <div className="bg-linear-to-br from-[#18422f] to-[#0a1c14] p-8 rounded-[40px] text-white relative overflow-hidden shadow-2xl">
               <div className="relative z-10">
-                <h3 className="font-bold text-lg mb-2">Need help?</h3>
-                <p className="text-sm text-white/70 mb-4">
-                  Our support team is available 24/7 to assist with your land
-                  verification.
+                <div className="w-12 h-12 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-6 border border-white/10">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="font-bold text-xl mb-3">Verified Purchase</h3>
+                <p className="text-sm text-white/60 mb-8 leading-relaxed">
+                  Every property on TerraTrust is manually verified by our legal team before listing.
                 </p>
-                <button className="bg-white text-[#18422f] px-6 py-2 rounded-xl text-sm font-bold">
-                  Contact Support
+                <button className="bg-white text-[#18422f] w-full py-4 rounded-2xl text-sm font-bold hover:bg-white/90 active:scale-[0.98] transition-all shadow-xl shadow-black/20">
+                  Learn about verification
                 </button>
               </div>
-              <Activity className="absolute bottom-[-20px] right-[-20px] w-32 h-32 text-white/5 rotate-12" />
+              <Activity className="absolute bottom-[-40px] right-[-40px] w-48 h-48 text-white/5 rotate-12" />
             </div>
           </div>
         </div>
@@ -329,17 +360,27 @@ const BuyerDashboard = () => {
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="Hi, I am interested in this land. Is it still available?"
                   rows={4}
-                  className="w-full bg-[#f3f5f4] border-none rounded-2xl p-6 text-sm focus:ring-2 focus:ring-[#18422f]/10 outline-none resize-none"
+                  className="w-full bg-[#f3f5f4] border-none rounded-2xl p-6 text-sm text-black focus:ring-2 focus:ring-[#18422f]/10 outline-none resize-none"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#18422f] text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-[#18422f]/20 hover:translate-y-[-2px] hover:shadow-xl transition-all"
+                disabled={isSubmitting}
+                className="w-full bg-[#18422f] text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-[#18422f]/20 hover:shadow-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Send Message
-                <Send className="w-5 h-5" />
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending Inquiry...
+                  </>
+                ) : (
+                  <>
+                    Send Direct Inquiry
+                    <Send className="w-4 h-4" />
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -350,23 +391,3 @@ const BuyerDashboard = () => {
 };
 
 export default BuyerDashboard;
-
-// Placeholder component for Lucide if not imported
-function Activity({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-  );
-}

@@ -5,34 +5,26 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
-  Search,
-  ArrowRightLeft,
-  FileCheck,
-  Users,
   LogOut,
   Menu,
-  Shield,
-  MapPin,
   MessageSquare,
 } from "lucide-react";
 import Image from "next/image";
 
 const buyerItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/pages/userdashboard" },
-  { label: "Find Lands", icon: Search, path: "/pages/userdashboard" },
+  // { label: "Find Lands", icon: Search, path: "/pages/userdashboard" },
   { label: "My Messages", icon: MessageSquare, path: "/pages/messages" },
 ];
 
 const ownerItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/pages/ownerdashbaord" },
-  { label: "My Lands", icon: FileCheck, path: "/pages/ownerdashbaord" },
+  // { label: "My Lands", icon: FileCheck, path: "/pages/ownerdashbaord" },
   { label: "Messages", icon: MessageSquare, path: "/pages/messages" },
 ];
 
 const adminItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/pages/dashboard" },
-  { label: "All Lands", icon: MapPin, path: "/pages/dashboard" },
-  { label: "Manage Users", icon: Users, path: "/pages/dashboard" },
 ];
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
@@ -79,7 +71,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         <nav className="p-4 space-y-1">
           {navItems.map((item) => (
             <Link
-              key={item.path}
+              key={item.label}
               href={item.path}
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-body text-sm transition-colors ${

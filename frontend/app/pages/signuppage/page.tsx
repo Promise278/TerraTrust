@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/utils/api";
 import toast from "react-hot-toast";
+import Link from "next/link";
 
 type AccountType = "landowner" | "buyer";
 
@@ -49,24 +50,19 @@ const AuthPage = () => {
           router.push("/pages/userdashboard");
         }
       } else {
-        const response = await api.post("/auth/signup", {
-          name: fullName,
+        await api.post("/auth/signup", {
+          fullname: fullName,
           email,
           password,
           role: accountType,
         });
-        login(response.data.token, response.data.user);
-        toast.success("Account created successfully!");
-
-        if (accountType === "landowner") {
-          router.push("/pages/ownerdashbaord");
-        } else {
-          router.push("/pages/userdashboard");
-        }
+        toast.success("Account created successfully! Please sign in.");
+        setIsLogin(true);
+        setPassword("");
       }
     } catch (error) {
       if (error instanceof Error) {
-      toast.error(error.message || "Something went wrong.");
+        toast.error(error.message || "Something went wrong.");
       }
     } finally {
       setLoading(false);
@@ -85,9 +81,11 @@ const AuthPage = () => {
             height={160}
             className="w-10 h-10"
           />
-          <span className="font-display text-2xl text-[#fdf7e9]">
-            TerraTrust
-          </span>
+          <Link href="/">
+            <span className="font-display text-2xl text-[#fdf7e9]">
+              TerraTrust
+            </span>
+          </Link>
         </div>
         <h1 className="font-display text-5xl text-[#fdf7e9] leading-tight mb-6">
           Secure your land. <br />
@@ -173,8 +171,8 @@ const AuthPage = () => {
                         onClick={() => setAccountType("landowner")}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                           accountType === "landowner"
-                            ? "border-[#18422f] bg-[#f3f5f4]"
-                            : "border-white bg-[#f3f5f4] hover:border-[#18422f]"
+                            ? "border-[#18422f] bg-[#f0fdf4]"
+                            : "border-[#e5e9e7] bg-[#f8fcf9] hover:border-[#18422f]"
                         }`}
                       >
                         <Home className="w-6 h-6 text-[#18422f]" />
@@ -190,13 +188,13 @@ const AuthPage = () => {
                         onClick={() => setAccountType("buyer")}
                         className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                           accountType === "buyer"
-                            ? "border-[#18422f] bg-[#f3f5f4]"
-                            : "border-white bg-[#f3f5f4] hover:border-[#18422f]"
+                            ? "border-[#18422f] bg-[#f0fdf4]"
+                            : "border-[#e5e9e7] bg-[#f8fcf9] hover:border-[#18422f]"
                         }`}
                       >
                         <ShoppingCart className="w-6 h-6 text-[#18422f]" />
                         <span className="font-body text-sm font-semibold text-[#18422f]">
-                          Buyer / Agent
+                          Buyer
                         </span>
                         <span className="font-body text-[11px] text-[#6e7a6f] text-center leading-tight">
                           I want to buy or verify land

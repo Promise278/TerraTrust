@@ -1,39 +1,85 @@
-const sequelize = require("./config/database");
-const User = require("./User");
-const Land = require("./Land");
-const Conversation = require("./Conversation");
-const Message = require("./Message");
+// 'use strict';
 
-// User <-> Land (One-to-Many)
-User.hasMany(Land, { foreignKey: "ownerId", as: "lands" });
-Land.belongsTo(User, { foreignKey: "ownerId", as: "owner" });
+// const fs = require('fs');
+// const path = require('path');
+// const Sequelize = require('sequelize');
+// const process = require('process');
+// const basename = path.basename(__filename);
+// const env = process.env.NODE_ENV || 'development';
+// const config = require(__dirname + '/../config/config.js')[env];
+// const db = {};
 
-// User <-> Conversation (Many-to-Many or just tracked roles)
-Conversation.belongsTo(User, { as: "buyer", foreignKey: "buyerId" });
-Conversation.belongsTo(User, { as: "landowner", foreignKey: "landownerId" });
+// const sequelize = require("../config/connection");
 
-// Conversation <-> Message (One-to-Many)
-Conversation.hasMany(Message, { foreignKey: "conversationId", as: "messages" });
-Message.belongsTo(Conversation, {
-  foreignKey: "conversationId",
-  as: "conversation",
+// // let sequelize;
+// // if (config.use_env_variable) {
+// //   sequelize = new Sequelize(process.env[config.use_env_variable], config);
+// // } else {
+// //   sequelize = new Sequelize(config.database, config.username, config.password, config);
+// // }
+
+// fs
+//   .readdirSync(__dirname)
+//   .filter(file => {
+//     return (
+//       file.indexOf('.') !== 0 &&
+//       file !== basename &&
+//       file.slice(-3) === '.js' &&
+//       file.indexOf('.test.js') === -1
+//     );
+//   })
+//   .forEach(file => {
+//     const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+//     db[model.name] = model;
+//   });
+
+// Object.keys(db).forEach(modelName => {
+//   if (db[modelName].associate) {
+//     db[modelName].associate(db);
+//   }
+// });
+
+// db.sequelize = sequelize;
+// db.Sequelize = Sequelize;
+
+// module.exports = db;
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const Sequelize = require("sequelize");
+const process = require("process");
+const basename = path.basename(__filename);
+const env = process.env.NODE_ENV || "development";
+const config = require(__dirname + "/../config/config.js")[env];
+const db = {};
+
+const sequelize = require("../config/connection");
+
+fs.readdirSync(__dirname)
+  .filter((file) => {
+    return (
+      file.indexOf(".") !== 0 &&
+      file !== basename &&
+      file.slice(-3) === ".js" &&
+      file.indexOf(".test.js") === -1
+    );
+  })
+  .forEach((file) => {
+    const model = require(path.join(__dirname, file))(
+      sequelize,
+      Sequelize.DataTypes,
+    );
+    db[model.name] = model;
+  });
+
+Object.keys(db).forEach((modelName) => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
 });
 
-const syncDb = async () => {
-  try {
-    // In a real production app, use migrations.
-    // sync({ alter: true }) is fine for rapid development.
-    await sequelize.sync({ alter: true });
-    console.log("Database synced successfully");
-  } catch (error) {
-    console.error("Error syncing database:", error);
-  }
-};
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
 
-module.exports = {
-  User,
-  Land,
-  Conversation,
-  Message,
-  syncDb,
-};
+module.exports = db;

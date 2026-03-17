@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "@/components/DashboardLayout";
 import api from "@/utils/api";
 import {
@@ -16,16 +17,19 @@ import toast from "react-hot-toast";
 
 interface Message {
   id: string;
-  text: string;
+  content: string;
   senderId: string;
   createdAt: string;
 }
 
 interface Conversation {
   id: string;
-  buyer?: { id: string; name: string; email: string };
-  landowner?: { id: string; name: string; email: string };
+  senderId: string;
+  receiverId: string;
+  land?: { id: string; title: string; imageUrl?: string; location?: string };
+  otherParty?: { id: string; name: string; email: string };
   messages: Message[];
+  unreadCount?: number;
 }
 
 const MessagingPage = () => {
@@ -35,29 +39,40 @@ const MessagingPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchConversations = async () => {
+  const searchParams = useSearchParams();
+  const convIdFromUrl = searchParams.get("convId");
+
+  const fetchConversations = useCallback(async () => {
     try {
       const response = await api.get("/messages/conversations");
-      setConversations(response.data);
+      const data = response.data.data || [];
+      setConversations(data);
+      
+      // Auto-select conversation from URL
+      if (convIdFromUrl && !selectedConv) {
+        const found = data.find((c: Conversation) => c.id === convIdFromUrl);
+        if (found) setSelectedConv(found);
+      }
     } catch {
       toast.error("Failed to load conversations");
     } finally {
       setLoading(false);
     }
-  };
+  }, [convIdFromUrl, selectedConv]);
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [fetchConversations]);
 
   useEffect(() => {
     if (selectedConv) {
       const fetchMessages = async () => {
         try {
           const response = await api.get(`/messages/${selectedConv.id}`);
-          setMessages(response.data);
+          setMessages(response.data.data || []);
           scrollToBottom();
         } catch {
           toast.error("Failed to load messages");
@@ -79,38 +94,45 @@ const MessagingPage = () => {
     e.preventDefault();
     if (!selectedConv || !newMessage.trim()) return;
 
-    const receiverId =
-      user?.role === "buyer"
-        ? selectedConv.landowner?.id
-        : selectedConv.buyer?.id;
+    const other = getOtherParty(selectedConv);
+    const receiverId = other?.id;
+
+    if (!receiverId) {
+      toast.error("Could not identify message recipient");
+      return;
+    }
+
+    setIsSending(true);
 
     try {
       const response = await api.post("/messages/send", {
-        receiverId,
-        text: newMessage,
+        conversationId: selectedConv.id,
+        content: newMessage,
       });
-      setMessages([...messages, response.data]);
+      setMessages([...messages, response.data.data]);
       setNewMessage("");
       scrollToBottom();
       fetchConversations(); // Update side list
     } catch {
       toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
   };
 
   const getOtherParty = (conv: Conversation) => {
-    return user?.role === "buyer" ? conv.landowner : conv.buyer;
+    return conv.otherParty;
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-[#18422f] border-t-transparent rounded-full animate-spin" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+    if (loading || !user) {
+      return (
+        <DashboardLayout>
+          <div className="flex justify-center py-20">
+            <div className="w-8 h-8 border-4 border-[#18422f] border-t-transparent rounded-full animate-spin" />
+          </div>
+        </DashboardLayout>
+      );
+    }
 
   return (
     <DashboardLayout>
@@ -132,7 +154,7 @@ const MessagingPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-[#e5e9e7]">
-            {conversations.length === 0 ? (
+            {!conversations || conversations.length === 0 ? (
               <div className="p-10 text-center flex flex-col items-center gap-4">
                 <div className="w-16 h-16 bg-[#f3f5f4] rounded-full flex items-center justify-center">
                   <MessageCircle className="w-8 h-8 text-[#cbd5e1]" />
@@ -149,17 +171,18 @@ const MessagingPage = () => {
                     className={`w-full text-left p-6 flex items-center gap-4 hover:bg-[#f8f9f8] transition-all group ${selectedConv?.id === conv.id ? "bg-[#f3f5f4]" : ""}`}
                   >
                     <div className="w-12 h-12 rounded-2xl bg-white border border-[#e5e9e7] flex items-center justify-center font-bold text-[#18422f] shadow-sm">
-                      {other?.name.charAt(0)}
+                      {other?.name ? other.name.charAt(0) : "?"}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1">
                         <p className="text-sm font-bold text-[#0f1a16] truncate">
-                          {other?.name}
+                          {other?.name || "Unknown"}
                         </p>
-                        {/* <span className="text-[10px] text-[#9ca3af]">12:45 PM</span> */}
                       </div>
                       <p className="text-xs text-[#61776f] truncate">
-                        {conv.messages[0]?.text || "Start a conversation..."}
+                        {conv.messages && conv.messages[0]?.content
+                          ? conv.messages[0].content
+                          : "Start a conversation..."}
                       </p>
                     </div>
                   </button>
@@ -238,7 +261,7 @@ const MessagingPage = () => {
                               : "bg-white text-[#0f1a16] border border-[#e5e9e7] rounded-tl-none"
                           }`}
                         >
-                          <p className="leading-relaxed">{msg.text}</p>
+                          <p className="leading-relaxed">{msg.content}</p>
                           <p
                             className={`text-[9px] mt-2 font-bold uppercase tracking-widest ${isOwn ? "text-white/50" : "text-[#9ca3af]"}`}
                           >
@@ -282,10 +305,14 @@ const MessagingPage = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={!newMessage.trim()}
-                    className="bg-[#18422f] text-white p-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-30 disabled:hover:opacity-30 shadow-md shadow-[#18422f]/20"
+                    disabled={!newMessage.trim() || isSending}
+                    className="bg-[#18422f] text-white p-3 rounded-xl hover:opacity-90 transition-all disabled:opacity-30 disabled:hover:opacity-30 shadow-md shadow-[#18422f]/20 flex items-center justify-center min-w-[44px]"
                   >
-                    <Send className="w-5 h-5" />
+                    {isSending ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </form>
@@ -297,4 +324,16 @@ const MessagingPage = () => {
   );
 };
 
-export default MessagingPage;
+const MessagingPageWrapper = () => (
+  <Suspense fallback={
+    <DashboardLayout>
+      <div className="flex justify-center py-20">
+        <div className="w-8 h-8 border-4 border-[#18422f] border-t-transparent rounded-full animate-spin" />
+      </div>
+    </DashboardLayout>
+  }>
+    <MessagingPage />
+  </Suspense>
+);
+
+export default MessagingPageWrapper;

@@ -1,6 +1,7 @@
 "use client"
 import { motion } from "framer-motion";
 import { ArrowRight, Shield } from "lucide-react";
+import Link from "next/link";
 
 const CtaSection = () => {
   return (
@@ -21,6 +22,7 @@ const CtaSection = () => {
             Partner with us as a state agency, community leader, or technology collaborator.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
+            <Link href='/pages/signuppage'>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -29,13 +31,16 @@ const CtaSection = () => {
               Get Started
               <ArrowRight className="w-6 h-6" />
             </motion.button>
+            </Link>
+            <Link href="/pages/signuppage">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="inline-flex items-center gap-2 border border-border text-[#61776f] font-body font-medium px-16 py-4 rounded-lg text-base hover:bg-muted transition-colors"
+              className="inline-flex items-center gap-2 border border-border text-[#61776f] font-body font-medium px-16 py-6 rounded-lg text-base hover:bg-muted transition-colors"
             >
               SignIn
             </motion.button>
+            </Link>
           </div>
         </motion.div>
       </div>
