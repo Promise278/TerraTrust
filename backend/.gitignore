@@ -1,6 +1,6 @@
 .env
-.env*.local
 .env*
 
+# dependencies
 node_modules/
 /node_modules
